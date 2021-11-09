@@ -39,6 +39,8 @@ pub struct GildedRose {
     pub items: Vec<Item>,
 }
 
+const ETC_CONCERT_TICKET: &str = "Backstage passes to a TAFKAL80ETC concert";
+
 impl GildedRose {
     pub fn new(items: Vec<Item>) -> GildedRose {
         GildedRose { items }
@@ -46,25 +48,33 @@ impl GildedRose {
 
     pub fn update_quality(&mut self) {
         for item in &mut self.items {
-            if item.name != "Aged Brie"
-                && item.name != "Backstage passes to a TAFKAL80ETC concert"
-                && item.name != "Sulfuras, Hand of Ragnaros"
-            {
+            match item.name.as_str() {
+                ETC_CONCERT_TICKET => {
+                    item.sell_in -= 1;
+
+                    if item.sell_in < 0 {
+                        item.quality = 0;
+                        continue;
+                    }
+
+                    item.quality = std::cmp::min(
+                        50,
+                        match item.sell_in {
+                            0..=4 => item.quality + 3,
+                            5..=9 => item.quality + 2,
+                            _ => item.quality + 1,
+                        },
+                    );
+
+                    continue;
+                }
+                _ => {}
+            };
+
+            if item.name != "Aged Brie" && item.name != "Sulfuras, Hand of Ragnaros" {
                 item.downgrade_quality();
             } else {
-                if item.quality < 50 {
-                    item.upgrade_quality();
-
-                    if item.name == "Backstage passes to a TAFKAL80ETC concert" {
-                        if item.sell_in < 11 {
-                            item.upgrade_quality();
-                        }
-
-                        if item.sell_in < 6 {
-                            item.upgrade_quality();
-                        }
-                    }
-                }
+                item.upgrade_quality();
             }
 
             if item.name != "Sulfuras, Hand of Ragnaros" {
@@ -72,9 +82,7 @@ impl GildedRose {
             }
 
             if item.sell_in < 0 {
-                if item.name == "Backstage passes to a TAFKAL80ETC concert" {
-                    item.quality = 0;
-                } else if item.name == "Aged Brie" {
+                if item.name == "Aged Brie" {
                     item.upgrade_quality();
                 } else if item.name != "Sulfuras, Hand of Ragnaros" {
                     item.downgrade_quality();
@@ -86,94 +94,73 @@ impl GildedRose {
 
 #[cfg(test)]
 mod tests {
-    use super::{GildedRose, Item};
+    use super::{GildedRose, Item, ETC_CONCERT_TICKET};
 
-    #[test]
-    pub fn foo() {
-        let items = vec![Item::new("foo", 0, 0)];
+    fn test_update_sell_in(item_in: Item, want: i32) {
+        let items = vec![item_in];
         let mut rose = GildedRose::new(items);
         rose.update_quality();
 
-        assert_eq!("foo", rose.items[0].name);
+        assert_eq!(want, rose.items[0].sell_in);
+    }
+
+    fn test_update_quality(item_in: Item, want: i32) {
+        let items = vec![item_in];
+        let mut rose = GildedRose::new(items);
+        rose.update_quality();
+
+        assert_eq!(want, rose.items[0].quality);
     }
 
     #[test]
-    pub fn test_etc_50_5() {
-        let items = vec![Item::new(
-            "Backstage passes to a TAFKAL80ETC concert",
-            5,
-            50,
-        )];
-        let mut rose = GildedRose::new(items);
-        rose.update_quality();
-
-        assert_eq!(
-            vec![Item::new(
-                "Backstage passes to a TAFKAL80ETC concert",
-                4,
-                50
-            )],
-            rose.items
-        );
+    pub fn test_reduce_sell_in_except_sulfuras() {
+        test_update_sell_in(Item::new("foo", 10, 0), 9);
+        test_update_sell_in(Item::new("Aged Brie", 10, 0), 9);
+        test_update_sell_in(Item::new(ETC_CONCERT_TICKET, 10, 0), 9);
+        test_update_sell_in(Item::new("Sulfuras, Hand of Ragnaros", 10, 0), 10);
     }
 
     #[test]
-    pub fn test_etc_49_5() {
-        let items = vec![Item::new(
-            "Backstage passes to a TAFKAL80ETC concert",
-            5,
-            49,
-        )];
-        let mut rose = GildedRose::new(items);
-        rose.update_quality();
-
-        assert_eq!(
-            vec![Item::new(
-                "Backstage passes to a TAFKAL80ETC concert",
-                4,
-                50
-            )],
-            rose.items
-        );
+    pub fn test_etc_quality_sell_in_11() {
+        // Quality never goes over 50
+        // Quality does +1 if quality >= 11
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 11, 50), 50);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 11, 49), 50);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 11, 48), 49);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 11, 30), 31);
     }
 
     #[test]
-    pub fn test_etc_40_9() {
-        let items = vec![Item::new(
-            "Backstage passes to a TAFKAL80ETC concert",
-            9,
-            40,
-        )];
-        let mut rose = GildedRose::new(items);
-        rose.update_quality();
-
-        assert_eq!(
-            vec![Item::new(
-                "Backstage passes to a TAFKAL80ETC concert",
-                8,
-                42
-            )],
-            rose.items
-        );
+    pub fn test_etc_quality_sell_in_6_to_10() {
+        // Quality never goes over 50
+        // Quality does +3 if 6 <= quality <= 10
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 6, 50), 50);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 6, 49), 50);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 6, 48), 50);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 10, 47), 49);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 10, 30), 32);
     }
 
     #[test]
-    pub fn test_etc_40_4() {
-        let items = vec![Item::new(
-            "Backstage passes to a TAFKAL80ETC concert",
-            4,
-            40,
-        )];
-        let mut rose = GildedRose::new(items);
-        rose.update_quality();
+    pub fn test_etc_quality_sell_in_1_to_5() {
+        // Quality never goes over 50
+        // Quality does +3 if 1 <= quality <= 5
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 1, 50), 50);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 1, 49), 50);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 1, 48), 50);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 5, 47), 50);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 5, 46), 49);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 5, 30), 33);
+    }
 
-        assert_eq!(
-            vec![Item::new(
-                "Backstage passes to a TAFKAL80ETC concert",
-                3,
-                43
-            )],
-            rose.items
-        );
+    #[test]
+    pub fn test_etc_quality_sell_in_0_or_less() {
+        // Quality always go to 0 if sell_in is 0 or negative
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 0, 50), 0);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 0, 49), 0);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, -1, 48), 0);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, -5, 47), 0);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, -10, 46), 0);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, -50, 30), 0);
     }
 }
