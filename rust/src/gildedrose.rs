@@ -43,6 +43,7 @@ pub struct GildedRose {
 
 const ETC_CONCERT_TICKET: &str = "Backstage passes to a TAFKAL80ETC concert";
 const AGED_BRIE: &str = "Aged Brie";
+const SULFURAS: &str = "Sulfuras, Hand of Ragnaros";
 
 impl GildedRose {
     pub fn new(items: Vec<Item>) -> GildedRose {
@@ -75,21 +76,28 @@ impl GildedRose {
 
                     continue;
                 }
+
+                SULFURAS => {
+                    item.upgrade_quality(1);
+
+                    continue;
+                }
+
                 _ => {}
             };
 
-            if item.name != "Sulfuras, Hand of Ragnaros" {
+            if item.name != SULFURAS {
                 item.downgrade_quality();
             } else {
                 item.upgrade_quality(1);
             }
 
-            if item.name != "Sulfuras, Hand of Ragnaros" {
+            if item.name != SULFURAS {
                 item.sell_in -= 1;
             }
 
             if item.sell_in < 0 {
-                if item.name != "Sulfuras, Hand of Ragnaros" {
+                if item.name != SULFURAS {
                     item.downgrade_quality();
                 }
             }
@@ -99,7 +107,7 @@ impl GildedRose {
 
 #[cfg(test)]
 mod tests {
-    use super::{GildedRose, Item, AGED_BRIE, ETC_CONCERT_TICKET};
+    use super::{GildedRose, Item, AGED_BRIE, ETC_CONCERT_TICKET, SULFURAS};
 
     fn test_update_sell_in(item_in: Item, want: i32) {
         let items = vec![item_in];
@@ -122,28 +130,28 @@ mod tests {
         test_update_sell_in(Item::new("foo", 10, 0), 9);
         test_update_sell_in(Item::new(AGED_BRIE, 10, 0), 9);
         test_update_sell_in(Item::new(ETC_CONCERT_TICKET, 10, 0), 9);
-        test_update_sell_in(Item::new("Sulfuras, Hand of Ragnaros", 10, 0), 10);
+        test_update_sell_in(Item::new(SULFURAS, 10, 0), 10);
     }
 
     #[test]
     pub fn test_quality_cannot_upgrade_to_more_than_50() {
         test_update_quality(Item::new(AGED_BRIE, 10, 50), 50);
         test_update_quality(Item::new(ETC_CONCERT_TICKET, 10, 50), 50);
-        test_update_quality(Item::new("Sulfuras, Hand of Ragnaros", 10, 50), 50);
+        test_update_quality(Item::new(SULFURAS, 10, 50), 50);
     }
 
     #[test]
     pub fn test_quality_can_upgrade_when_under_50() {
         test_update_quality(Item::new(AGED_BRIE, 10, 49), 50);
         test_update_quality(Item::new(ETC_CONCERT_TICKET, 10, 49), 50);
-        test_update_quality(Item::new("Sulfuras, Hand of Ragnaros", 10, 49), 50);
+        test_update_quality(Item::new(SULFURAS, 10, 49), 50);
     }
 
     #[test]
     pub fn test_quality_stays_the_same_over_50() {
         test_update_quality(Item::new(AGED_BRIE, 10, 123456), 123456);
         test_update_quality(Item::new(ETC_CONCERT_TICKET, 10, 123456), 123456);
-        test_update_quality(Item::new("Sulfuras, Hand of Ragnaros", 10, 123456), 123456);
+        test_update_quality(Item::new(SULFURAS, 10, 123456), 123456);
     }
 
     #[test]
@@ -191,13 +199,31 @@ mod tests {
     }
 
     #[test]
-    pub fn test_aged_brie_always_upgrade() {
+    pub fn test_aged_brie_upgrade_once_when_sell_in_positive() {
         // Quality always upgrades by 1 (limit: 50) with a positive sell_in
         test_update_quality(Item::new(AGED_BRIE, 10, 50), 50);
         test_update_quality(Item::new(AGED_BRIE, 10, 49), 50);
         test_update_quality(Item::new(AGED_BRIE, 10, 48), 49);
-        test_update_quality(Item::new(AGED_BRIE, 10, 47), 48);
-        test_update_quality(Item::new(AGED_BRIE, 10, 46), 47);
         test_update_quality(Item::new(AGED_BRIE, 10, 30), 31);
+    }
+
+    #[test]
+    pub fn test_aged_brie_upgrade_twice_when_sell_in_not_positive() {
+        // Quality+2 when sell_in <= 0
+        test_update_quality(Item::new(AGED_BRIE, 0, 5), 7);
+        test_update_quality(Item::new(AGED_BRIE, 0, 4), 6);
+        test_update_quality(Item::new(AGED_BRIE, -1, 48), 50);
+        test_update_quality(Item::new(AGED_BRIE, -10, 47), 49);
+        test_update_quality(Item::new(AGED_BRIE, -50, 30), 32);
+    }
+
+    #[test]
+    pub fn test_suflfuras_always_upgrade_quality() {
+        // Quality+1 no matter what
+        test_update_quality(Item::new(SULFURAS, 150, 46), 47);
+        test_update_quality(Item::new(SULFURAS, 10, 5), 6);
+        test_update_quality(Item::new(SULFURAS, 0, 4), 5);
+        test_update_quality(Item::new(SULFURAS, -1, 48), 49);
+        test_update_quality(Item::new(SULFURAS, -10, 47), 48);
     }
 }
