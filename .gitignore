@@ -1,7 +1,5 @@
-bin
-obj
-*.sln.DotSettings.user
+target/
+result.txt
+
 .vs
-vendor
 .idea
-*.iml

@@ -1,8 +1,29 @@
 # Gilded Rose Refactoring Kata
 
-This Kata was originally created by Terry Hughes (http://twitter.com/TerryHughes). It is already on GitHub [here](https://github.com/NotMyself/GildedRose). See also [Bobby Johnson's description of the kata](http://iamnotmyself.com/2011/02/13/refactor-this-the-gilded-rose-kata/).
+## My solution!!
 
-I translated the original C# into a few other languages, (with a little help from my friends!), and slightly changed the starting position. This means I've actually done a small amount of refactoring already compared with the original form of the kata, and made it easier to get going with writing tests by giving you one failing unit test to start with. I also added test fixtures for Text-Based approval testing with TextTest (see [the TextTests](https://github.com/emilybache/GildedRose-Refactoring-Kata/tree/master/texttests))
+I decided not to look into the instructions provided with the Kata, instead focusing on reverse engineering the code.
+Indeed, I have much more often faced codebases with no documentation and nobody around that understood what it did, or how it did it, than codebases that were explained to me.
+
+I started with the simplest end to end test I could come up with:
+- `cargo run > correct_output.txt`
+- simple shell script to diff `cargo run`'s output with the saved output
+- `cargo watch -s ./e2e.sh -i result.txt` to hot-reload after every change
+That gave me the confidence to start making changes and catch most issues.
+It would show that things went wrong, but not really pin-point the issues.
+
+After that, I started identifying patterns, one after the other.
+
+1. Quality cannot go over 50 -> extract a couple of unit tests and a simple method that only increases quality if it's <50
+2. Quality cannot go under 0 -> same
+3. Understand everything that happens with one item after the other (I did ETC concert tickets -> Aged Brie -> Sulfuras -> any other item).
+  For each one of them, I would understand case by case what happened, by writing unit tests for them.
+  After writing enough tests, I would extract all code related to one item (e.g. Aged Brie) into a match pattern branch, until the tests passed
+4. After having extracted all the individual paths, I was able to understand the code better and improve the code further (remove duplicates, simplify branches, cover more cases with tests as I understood the "business rules").
+
+# Original instructions
+
+This Kata was originally created by Terry Hughes (http://twitter.com/TerryHughes). It is already on GitHub [here](https://github.com/NotMyself/GildedRose). See also [Bobby Johnson's description of the kata](http://iamnotmyself.com/2011/02/13/refactor-this-the-gilded-rose-kata/).
 
 As Bobby Johnson points out in his article ["Why Most Solutions to Gilded Rose Miss The Bigger Picture"](http://iamnotmyself.com/2012/12/07/why-most-solutions-to-gilded-rose-miss-the-bigger-picture), it'll actually give you
 better practice at handling a legacy code situation if you do this Kata in the original C#. However, I think this kata
