@@ -24,9 +24,11 @@ impl Item {
         }
     }
 
-    fn downgrade_quality(&mut self) {
-        if self.quality > 0 {
-            self.quality -= 1;
+    fn downgrade_quality(&mut self, quantity: i32) {
+        for _ in 0..quantity {
+            if self.quality > 0 {
+                self.quality -= 1;
+            }
         }
     }
 }
@@ -66,41 +68,22 @@ impl GildedRose {
                         5..=9 => 2,
                         _ => 1,
                     });
-
-                    continue;
                 }
 
                 AGED_BRIE => {
                     item.sell_in -= 1;
                     item.upgrade_quality(if item.sell_in < 0 { 2 } else { 1 });
-
-                    continue;
                 }
 
                 SULFURAS => {
                     item.upgrade_quality(1);
-
-                    continue;
                 }
 
-                _ => {}
+                _ => {
+                    item.sell_in -= 1;
+                    item.downgrade_quality(if item.sell_in < 0 { 2 } else { 1 });
+                }
             };
-
-            if item.name != SULFURAS {
-                item.downgrade_quality();
-            } else {
-                item.upgrade_quality(1);
-            }
-
-            if item.name != SULFURAS {
-                item.sell_in -= 1;
-            }
-
-            if item.sell_in < 0 {
-                if item.name != SULFURAS {
-                    item.downgrade_quality();
-                }
-            }
         }
     }
 }
@@ -108,6 +91,8 @@ impl GildedRose {
 #[cfg(test)]
 mod tests {
     use super::{GildedRose, Item, AGED_BRIE, ETC_CONCERT_TICKET, SULFURAS};
+
+    const ELIXIR: &str = "Elixir of the Mongoose";
 
     fn test_update_sell_in(item_in: Item, want: i32) {
         let items = vec![item_in];
@@ -148,10 +133,16 @@ mod tests {
     }
 
     #[test]
-    pub fn test_quality_stays_the_same_over_50() {
+    pub fn test_quality_stays_the_same_when_upgrading_over_50() {
         test_update_quality(Item::new(AGED_BRIE, 10, 123456), 123456);
         test_update_quality(Item::new(ETC_CONCERT_TICKET, 10, 123456), 123456);
         test_update_quality(Item::new(SULFURAS, 10, 123456), 123456);
+    }
+
+    #[test]
+    pub fn test_quality_stays_the_same_when_downgrading_under_0() {
+        test_update_quality(Item::new(ELIXIR, 10, -123456), -123456);
+        test_update_quality(Item::new(ELIXIR, 10, 0), 0);
     }
 
     #[test]
@@ -225,5 +216,23 @@ mod tests {
         test_update_quality(Item::new(SULFURAS, 0, 4), 5);
         test_update_quality(Item::new(SULFURAS, -1, 48), 49);
         test_update_quality(Item::new(SULFURAS, -10, 47), 48);
+    }
+
+    #[test]
+    pub fn test_other_items_downgrade_once_when_sell_in_positive() {
+        // Quality always downgrades by 1 with a positive sell_in
+        test_update_quality(Item::new(ELIXIR, 10, 50), 49);
+        test_update_quality(Item::new(ELIXIR, 10, 49), 48);
+        test_update_quality(Item::new(ELIXIR, 10, -30), -30);
+    }
+
+    #[test]
+    pub fn test_other_items_downgrade_twice_when_sell_in_not_positive() {
+        // Quality-2 when sell_in <= 0
+        test_update_quality(Item::new(ELIXIR, 0, 5), 3);
+        test_update_quality(Item::new(ELIXIR, 0, 1), 0);
+        test_update_quality(Item::new(ELIXIR, -1, 2), 0);
+        test_update_quality(Item::new(ELIXIR, -10, 47), 45);
+        test_update_quality(Item::new(ELIXIR, -50, -30), -30);
     }
 }
