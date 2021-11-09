@@ -21,6 +21,12 @@ After that, I started identifying patterns, one after the other.
   After writing enough tests, I would extract all code related to one item (e.g. Aged Brie) into a match pattern branch, until the tests passed
 4. After having extracted all the individual paths, I was able to understand the code better and improve the code further (remove duplicates, simplify branches, cover more cases with tests as I understood the "business rules").
 
+I ran the tests on each save with `cargo watch -x test`, to use my tests as much as I could to help me refactor faster and more effectively.
+
+I could have decided to refactor further and use traits, and overwrite the "update_quality" and "update_sell_in" functions.
+I opted against it because I felt it was too early to optimise, and would - for now - make the code less readable.
+With more items in play, the traits approach becomes more and more interesting.
+
 # Original instructions
 
 This Kata was originally created by Terry Hughes (http://twitter.com/TerryHughes). It is already on GitHub [here](https://github.com/NotMyself/GildedRose). See also [Bobby Johnson's description of the kata](http://iamnotmyself.com/2011/02/13/refactor-this-the-gilded-rose-kata/).
