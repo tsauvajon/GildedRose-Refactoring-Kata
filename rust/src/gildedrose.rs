@@ -16,6 +16,41 @@ impl Item {
         }
     }
 
+    fn update_sell_in(&mut self) {
+        if self.name.as_str() != SULFURAS {
+            self.sell_in -= 1;
+        }
+    }
+
+    fn update_quality(&mut self) {
+        match self.name.as_str() {
+            ETC_CONCERT_TICKET => {
+                if self.sell_in < 0 {
+                    self.quality = 0;
+                    return;
+                }
+
+                self.upgrade_quality(match self.sell_in {
+                    0..=4 => 3,
+                    5..=9 => 2,
+                    _ => 1,
+                });
+            }
+
+            AGED_BRIE => {
+                self.upgrade_quality(if self.sell_in < 0 { 2 } else { 1 });
+            }
+
+            SULFURAS => {
+                self.upgrade_quality(1);
+            }
+
+            _ => {
+                self.downgrade_quality(if self.sell_in < 0 { 2 } else { 1 });
+            }
+        };
+    }
+
     fn upgrade_quality(&mut self, quantity: i32) {
         for _ in 0..quantity {
             if self.quality < 50 {
@@ -54,36 +89,8 @@ impl GildedRose {
 
     pub fn update_quality(&mut self) {
         for item in &mut self.items {
-            match item.name.as_str() {
-                ETC_CONCERT_TICKET => {
-                    item.sell_in -= 1;
-
-                    if item.sell_in < 0 {
-                        item.quality = 0;
-                        continue;
-                    }
-
-                    item.upgrade_quality(match item.sell_in {
-                        0..=4 => 3,
-                        5..=9 => 2,
-                        _ => 1,
-                    });
-                }
-
-                AGED_BRIE => {
-                    item.sell_in -= 1;
-                    item.upgrade_quality(if item.sell_in < 0 { 2 } else { 1 });
-                }
-
-                SULFURAS => {
-                    item.upgrade_quality(1);
-                }
-
-                _ => {
-                    item.sell_in -= 1;
-                    item.downgrade_quality(if item.sell_in < 0 { 2 } else { 1 });
-                }
-            };
+            item.update_sell_in();
+            item.update_quality();
         }
     }
 }
