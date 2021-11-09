@@ -16,9 +16,11 @@ impl Item {
         }
     }
 
-    fn upgrade_quality(&mut self) {
-        if self.quality < 50 {
-            self.quality += 1;
+    fn upgrade_quality(&mut self, quantity: i32) {
+        for _ in 0..quantity {
+            if self.quality < 50 {
+                self.quality += 1;
+            }
         }
     }
 
@@ -40,6 +42,7 @@ pub struct GildedRose {
 }
 
 const ETC_CONCERT_TICKET: &str = "Backstage passes to a TAFKAL80ETC concert";
+const AGED_BRIE: &str = "Aged Brie";
 
 impl GildedRose {
     pub fn new(items: Vec<Item>) -> GildedRose {
@@ -57,24 +60,28 @@ impl GildedRose {
                         continue;
                     }
 
-                    item.quality = std::cmp::min(
-                        50,
-                        match item.sell_in {
-                            0..=4 => item.quality + 3,
-                            5..=9 => item.quality + 2,
-                            _ => item.quality + 1,
-                        },
-                    );
+                    item.upgrade_quality(match item.sell_in {
+                        0..=4 => 3,
+                        5..=9 => 2,
+                        _ => 1,
+                    });
+
+                    continue;
+                }
+
+                AGED_BRIE => {
+                    item.sell_in -= 1;
+                    item.upgrade_quality(if item.sell_in < 0 { 2 } else { 1 });
 
                     continue;
                 }
                 _ => {}
             };
 
-            if item.name != "Aged Brie" && item.name != "Sulfuras, Hand of Ragnaros" {
+            if item.name != "Sulfuras, Hand of Ragnaros" {
                 item.downgrade_quality();
             } else {
-                item.upgrade_quality();
+                item.upgrade_quality(1);
             }
 
             if item.name != "Sulfuras, Hand of Ragnaros" {
@@ -82,9 +89,7 @@ impl GildedRose {
             }
 
             if item.sell_in < 0 {
-                if item.name == "Aged Brie" {
-                    item.upgrade_quality();
-                } else if item.name != "Sulfuras, Hand of Ragnaros" {
+                if item.name != "Sulfuras, Hand of Ragnaros" {
                     item.downgrade_quality();
                 }
             }
@@ -94,7 +99,7 @@ impl GildedRose {
 
 #[cfg(test)]
 mod tests {
-    use super::{GildedRose, Item, ETC_CONCERT_TICKET};
+    use super::{GildedRose, Item, AGED_BRIE, ETC_CONCERT_TICKET};
 
     fn test_update_sell_in(item_in: Item, want: i32) {
         let items = vec![item_in];
@@ -115,9 +120,30 @@ mod tests {
     #[test]
     pub fn test_reduce_sell_in_except_sulfuras() {
         test_update_sell_in(Item::new("foo", 10, 0), 9);
-        test_update_sell_in(Item::new("Aged Brie", 10, 0), 9);
+        test_update_sell_in(Item::new(AGED_BRIE, 10, 0), 9);
         test_update_sell_in(Item::new(ETC_CONCERT_TICKET, 10, 0), 9);
         test_update_sell_in(Item::new("Sulfuras, Hand of Ragnaros", 10, 0), 10);
+    }
+
+    #[test]
+    pub fn test_quality_cannot_upgrade_to_more_than_50() {
+        test_update_quality(Item::new(AGED_BRIE, 10, 50), 50);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 10, 50), 50);
+        test_update_quality(Item::new("Sulfuras, Hand of Ragnaros", 10, 50), 50);
+    }
+
+    #[test]
+    pub fn test_quality_can_upgrade_when_under_50() {
+        test_update_quality(Item::new(AGED_BRIE, 10, 49), 50);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 10, 49), 50);
+        test_update_quality(Item::new("Sulfuras, Hand of Ragnaros", 10, 49), 50);
+    }
+
+    #[test]
+    pub fn test_quality_stays_the_same_over_50() {
+        test_update_quality(Item::new(AGED_BRIE, 10, 123456), 123456);
+        test_update_quality(Item::new(ETC_CONCERT_TICKET, 10, 123456), 123456);
+        test_update_quality(Item::new("Sulfuras, Hand of Ragnaros", 10, 123456), 123456);
     }
 
     #[test]
@@ -162,5 +188,16 @@ mod tests {
         test_update_quality(Item::new(ETC_CONCERT_TICKET, -5, 47), 0);
         test_update_quality(Item::new(ETC_CONCERT_TICKET, -10, 46), 0);
         test_update_quality(Item::new(ETC_CONCERT_TICKET, -50, 30), 0);
+    }
+
+    #[test]
+    pub fn test_aged_brie_always_upgrade() {
+        // Quality always upgrades by 1 (limit: 50) with a positive sell_in
+        test_update_quality(Item::new(AGED_BRIE, 10, 50), 50);
+        test_update_quality(Item::new(AGED_BRIE, 10, 49), 50);
+        test_update_quality(Item::new(AGED_BRIE, 10, 48), 49);
+        test_update_quality(Item::new(AGED_BRIE, 10, 47), 48);
+        test_update_quality(Item::new(AGED_BRIE, 10, 46), 47);
+        test_update_quality(Item::new(AGED_BRIE, 10, 30), 31);
     }
 }
